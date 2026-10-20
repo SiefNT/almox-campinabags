@@ -1,0 +1,16 @@
+ALMOXARIFADO CAMPINA BAGS - versão Netlify
+
+Pastas:
+  public/                 tela do app (index.html) e leitor de QR (jsqr.js)
+  netlify/functions/      api.mjs (ponte com o vhsys) e atualizar-produtos.mjs (3x por dia)
+  netlify/lib/core.mjs    regras: busca, lançamentos, login com PIN, registro
+
+Variáveis no Netlify (Site configuration > Environment variables):
+  VHSYS_ACCESS_TOKEN   token do vhsys                      (marcar como secreto)
+  VHSYS_SECRET_TOKEN   secret token do vhsys               (marcar como secreto)
+  OPERADORES           Nome:PIN separados por ;  ex.: Gabriel:4821;Ana Paula:7305
+  ITENS_LIBERADOS      códigos liberados separados por vírgula, ou * para todos
+                       (sem essa variável o app só consulta)
+
+Depois de mudar qualquer variável: Deploys > Trigger deploy (cada deploy gasta 15 créditos).
+Relatório: botão "Relatório do mês (CSV)" no rodapé do app.

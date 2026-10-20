@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#16324f">
+<title>Almoxarifado</title>
+<style>
+  :root {
+    --bg: #eef1f4; --card: #ffffff; --ink: #16202b; --mute: #5b6875; --line: #d6dce2;
+    --primary: #16324f; --primary-ink: #ffffff;
+    --saida: #c2410c; --entrada: #15803d; --conta: #1d4ed8;
+    --warn-bg: #fff4d6; --warn-ink: #7a4b00;
+    --err-bg: #fde2e1; --err-ink: #8a1c17;
+    --ok-bg: #dcf5e3; --ok-ink: #14532d;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.35 Roboto, "Segoe UI", system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--primary); color: var(--primary-ink);
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: .2px; flex: 1; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #9aa5b1; flex: none; }
+  .dot.on { background: #4ade80; } .dot.off { background: #f87171; }
+  .chip { background: rgba(255,255,255,.14); border: 0; color: #fff; border-radius: 999px;
+    padding: 6px 12px; font-size: 14px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  main { padding: 12px; max-width: 560px; margin: 0 auto; }
+  .card { background: var(--card); border-radius: var(--r); border: 1px solid var(--line); padding: 14px; margin-bottom: 12px; }
+  .scan { display: flex; gap: 8px; }
+  .scan input { flex: 1; min-width: 0; height: 52px; border: 2px solid var(--primary); border-radius: var(--r);
+    padding: 0 12px; font-size: 18px; background: #fff; }
+  .scan input:focus { outline: 3px solid rgba(22,50,79,.25); }
+  .btn { height: 52px; border: 0; border-radius: var(--r); padding: 0 16px; font-weight: 700; font-size: 16px;
+    background: var(--primary); color: #fff; }
+  .btn:active { filter: brightness(.9); }
+  .btn.ghost { background: transparent; color: var(--primary); border: 2px solid var(--line); }
+  .btn[disabled] { opacity: .45; }
+  .hint { color: var(--mute); font-size: 13px; margin: 8px 2px 0; }
+  .lista { list-style: none; margin: 0; padding: 0; }
+  .lista li { border-top: 1px solid var(--line); padding: 12px 2px; display: flex; gap: 10px; align-items: center; }
+  .lista li:first-child { border-top: 0; }
+  .lista .d { flex: 1; min-width: 0; }
+  .lista .cod { font-weight: 700; font-size: 14px; }
+  .lista .nm { font-size: 14px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lista .s { font-weight: 700; white-space: nowrap; }
+  .titulo { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--mute); margin: 0 0 8px; font-weight: 700; }
+  .item-cod { font-size: 15px; font-weight: 700; color: var(--primary); word-break: break-all; }
+  .item-desc { font-size: 18px; font-weight: 600; margin: 2px 0 12px; }
+  .saldo { display: flex; align-items: baseline; gap: 6px; }
+  .saldo b { font-size: 40px; line-height: 1; }
+  .saldo span { color: var(--mute); font-size: 16px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--mute); font-size: 14px; margin-top: 8px; }
+  .tag { display: inline-block; font-size: 13px; padding: 4px 10px; border-radius: 999px; font-weight: 600; margin-top: 10px; }
+  .tag.warn { background: var(--warn-bg); color: var(--warn-ink); }
+  .tag.lock { background: #e7ebf0; color: var(--mute); }
+  .acoes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .acoes .btn { padding: 0 6px; font-size: 15px; }
+  .b-saida { background: var(--saida); } .b-entrada { background: var(--entrada); } .b-conta { background: var(--conta); }
+  .form label { display: block; font-size: 14px; color: var(--mute); margin: 10px 0 4px; font-weight: 600; }
+  .qtd { width: 100%; height: 64px; font-size: 32px; font-weight: 700; text-align: center;
+    border: 2px solid var(--line); border-radius: var(--r); background: #fff; }
+  .qtd:focus { border-color: var(--primary); outline: none; }
+  .obs { width: 100%; height: 46px; border: 2px solid var(--line); border-radius: var(--r); padding: 0 12px; background: #fff; }
+  .prev { margin-top: 10px; font-size: 15px; min-height: 22px; }
+  .linha { display: flex; gap: 8px; margin-top: 14px; } .linha .btn { flex: 1; }
+  .msg { border-radius: var(--r); padding: 12px 14px; margin-bottom: 12px; font-weight: 600; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-ink); }
+  .msg.err { background: var(--err-bg); color: var(--err-ink); }
+  .msg.warn { background: var(--warn-bg); color: var(--warn-ink); }
+  .msg .linha { margin-top: 10px; }
+  .hist { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .hist li { border-top: 1px solid var(--line); padding: 8px 0; display: flex; gap: 8px; }
+  .hist li:first-child { border-top: 0; }
+  .hist .q { font-weight: 700; min-width: 64px; text-align: right; }
+  .hist .q.neg { color: var(--saida); } .hist .q.pos { color: var(--entrada); }
+  .hist .x { flex: 1; min-width: 0; } .hist .x div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist small { color: var(--mute); }
+  .oculto { display: none !important; }
+  .modal { position: fixed; inset: 0; background: rgba(10,20,30,.55); z-index: 10; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal .card { width: 100%; max-width: 420px; margin: 0; }
+  .scan .cam { width: 52px; padding: 0; display: flex; align-items: center; justify-content: center; flex: none; }
+  .scan .btn[type=submit] { padding: 0 12px; }
+  .camera { position: fixed; inset: 0; z-index: 20; background: #000; }
+  .camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .mira { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .mira span { width: 66vmin; height: 66vmin; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+    border: 3px solid rgba(255,255,255,.9); }
+  .mira.lido span { border-color: #4ade80; }
+  .cam-hint { position: absolute; left: 0; right: 0; top: 18px; margin: 0; text-align: center; color: #fff;
+    font-weight: 600; text-shadow: 0 1px 3px #000; padding: 0 16px; }
+  .cam-barra { position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; }
+  .cam-barra .btn { flex: 1; color: #fff; border-color: rgba(255,255,255,.6); background: rgba(0,0,0,.35); }
+  .cam-barra .btn.on { background: #fff; color: #000; }
+  .rodape { text-align: center; color: var(--mute); font-size: 12px; padding: 4px 0 8px; }
+  .ferramentas { display: flex; justify-content: center; gap: 18px; padding: 0 0 24px; }
+  .link { background: none; border: 0; padding: 6px 2px; color: var(--primary); font-size: 14px; font-weight: 600;
+    text-decoration: underline; text-underline-offset: 3px; }
+  .lbl { display: block; font-size: 14px; color: var(--mute); margin: 10px 0 4px; font-weight: 600; }
+  .pin { font-size: 22px; letter-spacing: 6px; text-align: center; }
+  .erro-login { color: var(--err-ink); background: var(--err-bg); border-radius: 8px; padding: 8px 10px; margin: 10px 0 0; font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>Almoxarifado</h1>
+  <button class="chip" id="btnOperador" type="button">Operador</button>
+</header>
+
+<main>
+  <div id="msg" class="msg oculto"></div>
+
+  <section class="card">
+    <form class="scan" id="formBusca" autocomplete="off">
+      <input id="busca" type="text" inputmode="text" placeholder="Bipe ou digite código / nome" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn" type="submit">Buscar</button>
+      <button class="btn cam" type="button" id="btnCamera" aria-label="Ler com a câmera" title="Ler com a câmera">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+      </button>
+    </form>
+    <p class="hint" id="hintBusca">Aponte o leitor para a etiqueta e aperte o gatilho.</p>
+  </section>
+
+  <section class="card oculto" id="secLista">
+    <p class="titulo" id="tituloLista">Resultados</p>
+    <ul class="lista" id="lista"></ul>
+  </section>
+
+  <section class="card oculto" id="secItem">
+    <div class="item-cod" id="iCod"></div>
+    <div class="item-desc" id="iDesc"></div>
+    <div class="saldo"><b id="iSaldo">0</b><span id="iUn"></span></div>
+    <div class="meta" id="iMeta"></div>
+    <div id="iTags"></div>
+    <div class="acoes" id="acoes">
+      <button class="btn b-saida" type="button" data-tipo="Saida">Saída</button>
+      <button class="btn b-entrada" type="button" data-tipo="Entrada">Entrada</button>
+      <button class="btn b-conta" type="button" data-tipo="Contagem">Contagem</button>
+    </div>
+
+    <div class="form oculto" id="secForm">
+      <label for="qtd" id="lblQtd">Quantidade</label>
+      <input class="qtd" id="qtd" type="text" inputmode="decimal" autocomplete="off">
+      <div class="prev" id="prev"></div>
+      <label for="obs">Observação (opcional)</label>
+      <input class="obs" id="obs" type="text" maxlength="120" placeholder="Ex.: máquina 4, OP 128" autocomplete="off">
+      <div class="linha">
+        <button class="btn ghost" type="button" id="btnCancelar">Cancelar</button>
+        <button class="btn" type="button" id="btnConfirmar">Confirmar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="secHist">
+    <p class="titulo">Últimos lançamentos</p>
+    <ul class="hist" id="hist"><li><small>Nenhum lançamento ainda.</small></li></ul>
+  </section>
+
+  <div class="rodape" id="rodape"></div>
+  <div class="ferramentas">
+    <button class="link" type="button" id="btnAtualizarLista">Atualizar lista do vhsys</button>
+    <button class="link" type="button" id="btnCsv">Relatório do mês (CSV)</button>
+  </div>
+</main>
+
+<div class="camera oculto" id="camera">
+  <video id="video" playsinline muted autoplay></video>
+  <div class="mira"><span></span></div>
+  <p class="cam-hint" id="camHint">Centralize um QR dentro do quadro</p>
+  <div class="cam-barra">
+    <button class="btn ghost" type="button" id="btnFecharCam">Cancelar</button>
+    <button class="btn ghost oculto" type="button" id="btnLanterna">Lanterna</button>
+  </div>
+</div>
+
+<div class="modal oculto" id="modalOp">
+  <form class="card" id="formLogin" autocomplete="off">
+    <p class="titulo">Entrar no almoxarifado</p>
+    <label class="lbl" for="nomeOp">Nome</label>
+    <input class="obs" id="nomeOp" type="text" maxlength="40" placeholder="Seu nome" autocomplete="username" autocapitalize="words">
+    <label class="lbl" for="pinOp">PIN</label>
+    <input class="obs pin" id="pinOp" type="password" inputmode="numeric" maxlength="12" placeholder="••••" autocomplete="current-password">
+    <p class="erro-login oculto" id="erroLogin"></p>
+    <div class="linha"><button class="btn" type="submit" id="btnSalvarOp">Entrar</button></div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var estado = { item: null, tipo: null, operador: '', token: '' };
+
+  function lerLocal(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function gravarLocal(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} }
+
+  function fmt(n) {
+    var v = Math.round(Number(n) * 10000) / 10000;
+    return v.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+  }
+  function paraNumero(t) {
+    t = String(t || '').trim().replace(/\s/g, '');
+    if (!t) return NaN;
+    if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+    return /^-?\d*\.?\d+$/.test(t) ? Number(t) : NaN;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function mostrar(el, sim) { el.classList.toggle('oculto', !sim); }
+
+  async function api(caminho, corpo) {
+    var headers = {};
+    if (estado.token) headers.Authorization = 'Bearer ' + estado.token;
+    var op = { headers: headers };
+    if (corpo) { op.method = 'POST'; headers['Content-Type'] = 'application/json'; op.body = JSON.stringify(corpo); }
+    var r;
+    try { r = await fetch(caminho, op); }
+    catch (e) { throw new Error('Sem internet no aparelho, ou o site não respondeu. Tente de novo.'); }
+    var d = {};
+    try { d = await r.json(); } catch (e) {}
+    if (r.status === 401 && d.login) { sair(true); throw new Error(d.erro || 'Sessão expirada. Entre de novo.'); }
+    if (!r.ok && !('confirmar' in d)) throw new Error(d.erro || ('Erro ' + r.status + ' em ' + caminho.split('?')[0]));
+    return d;
+  }
+
+  // ---------- mensagens
+  var timerMsg;
+  function aviso(texto, tipo, botoes) {
+    var m = $('msg');
+    clearTimeout(timerMsg);
+    m.className = 'msg ' + (tipo || 'ok');
+    m.innerHTML = esc(texto);
+    if (botoes) {
+      var l = document.createElement('div'); l.className = 'linha';
+      botoes.forEach(function (b) {
+        var bt = document.createElement('button');
+        bt.type = 'button'; bt.className = 'btn' + (b.ghost ? ' ghost' : ''); bt.textContent = b.texto;
+        bt.onclick = b.acao; l.appendChild(bt);
+      });
+      m.appendChild(l);
+    } else if (tipo !== 'err') {
+      timerMsg = setTimeout(function () { mostrar(m, false); }, 6000);
+    }
+    mostrar(m, true);
+    window.scrollTo(0, 0);
+  }
+  function limparAviso() { mostrar($('msg'), false); }
+
+  // ---------- login
+  function pedirOperador() {
+    $('nomeOp').value = estado.operador || lerLocal('almox_ultimo_nome');
+    $('pinOp').value = '';
+    mostrar($('erroLogin'), false);
+    mostrar($('modalOp'), true);
+    setTimeout(function () { ($('nomeOp').value ? $('pinOp') : $('nomeOp')).focus(); }, 50);
+  }
+  function sair(expirou) {
+    estado.token = ''; estado.operador = '';
+    gravarLocal('almox_token', ''); gravarLocal('almox_operador', '');
+    $('btnOperador').textContent = 'Entrar';
+    fecharForm();
+    pedirOperador();
+    if (expirou) { mostrar($('erroLogin'), true); $('erroLogin').textContent = 'Sua sessão expirou. Entre de novo.'; }
+  }
+  $('formLogin').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var nome = $('nomeOp').value.trim(), pin = $('pinOp').value.trim();
+    if (!nome) { $('nomeOp').focus(); return; }
+    if (!pin) { $('pinOp').focus(); return; }
+    var bt = $('btnSalvarOp'); bt.disabled = true; bt.textContent = 'Entrando...';
+    try {
+      var d = await api('/api/login', { nome: nome, pin: pin });
+      estado.token = d.token; estado.operador = d.nome;
+      gravarLocal('almox_token', d.token); gravarLocal('almox_operador', d.nome); gravarLocal('almox_ultimo_nome', d.nome);
+      $('btnOperador').textContent = d.nome;
+      mostrar($('modalOp'), false);
+      status(); carregarHistorico();
+      focarBusca();
+    } catch (err) {
+      $('erroLogin').textContent = err.message; mostrar($('erroLogin'), true);
+      $('pinOp').value = ''; $('pinOp').focus();
+    } finally { bt.disabled = false; bt.textContent = 'Entrar'; }
+  });
+  $('btnOperador').onclick = function () {
+    if (!estado.token) { pedirOperador(); return; }
+    aviso('Conectado como ' + estado.operador + '.', 'warn', [
+      { texto: 'Continuar', ghost: true, acao: function () { limparAviso(); focarBusca(); } },
+      { texto: 'Sair', acao: function () { limparAviso(); sair(false); } }
+    ]);
+  };
+
+  // ---------- busca
+  function focarBusca() {
+    if (!$('modalOp').classList.contains('oculto')) return;
+    var b = $('busca'); b.focus(); b.select();
+  }
+  $('formBusca').addEventListener('submit', function (e) { e.preventDefault(); buscar($('busca').value); });
+
+  async function buscar(q) {
+    q = String(q || '').trim();
+    if (!q) return;
+    fecharForm();
+    limparAviso();
+    $('busca').value = q;
+    try {
+      var d = await api('/api/buscar?q=' + encodeURIComponent(q));
+      var itens = d.itens || [];
+      if (itens.length === 1) { abrirItem(itens[0]); }
+      else if (!itens.length) {
+        mostrar($('secLista'), false); mostrar($('secItem'), false);
+        aviso('Nada encontrado para "' + q + '".', 'warn');
+      } else { listar(itens, q); }
+    } catch (e) { aviso('Erro na busca: ' + e.message, 'err'); }
+    focarBusca();
+  }
+
+  function listar(itens, q) {
+    mostrar($('secItem'), false);
+    $('tituloLista').textContent = itens.length + (itens.length >= 40 ? '+' : '') + ' itens para "' + q + '"';
+    $('lista').innerHTML = itens.map(function (p, i) {
+      return '<li data-i="' + i + '"><div class="d"><div class="cod">' + esc(p.cod) + '</div>' +
+        '<div class="nm">' + esc(p.desc) + '</div></div>' +
+        '<div class="s">' + fmt(p.saldo) + ' <small>' + esc(p.un) + '</small></div></li>';
+    }).join('');
+    Array.prototype.forEach.call($('lista').children, function (li) {
+      li.onclick = function () { abrirItem(itens[Number(li.getAttribute('data-i'))]); };
+    });
+    mostrar($('secLista'), true);
+  }
+
+  function pintarItem(p) {
+    estado.item = p;
+    $('iCod').textContent = p.cod || ('ID ' + p.id);
+    $('iDesc').textContent = p.desc;
+    $('iSaldo').textContent = fmt(p.saldo);
+    $('iUn').textContent = p.un || '';
+    var meta = [];
+    if (p.minimo > 0) meta.push('Mínimo: ' + fmt(p.minimo));
+    if (p.local) meta.push('Local: ' + esc(p.local));
+    if (p.ean) meta.push('EAN ' + esc(p.ean));
+    $('iMeta').innerHTML = meta.map(function (m) { return '<span>' + m + '</span>'; }).join('');
+    var tags = '';
+    if (p.minimo > 0 && p.saldo < p.minimo) tags += '<span class="tag warn">Abaixo do estoque mínimo</span> ';
+    if (!p.liberado) tags += '<span class="tag lock">Modo teste: só consulta para este item</span>';
+    $('iTags').innerHTML = tags;
+    Array.prototype.forEach.call($('acoes').children, function (b) { b.disabled = !p.liberado; });
+  }
+
+  async function abrirItem(p) {
+    mostrar($('secLista'), false);
+    pintarItem(p);
+    mostrar($('secItem'), true);
+    try {
+      var d = await api('/api/produto/' + p.id);
+      if (estado.item && estado.item.id === p.id) pintarItem(d.produto);
+      if (!d.ao_vivo) aviso('Saldo do cache (sem resposta do vhsys agora): ' + (d.aviso || ''), 'warn');
+    } catch (e) { aviso('Não consegui atualizar o saldo: ' + e.message, 'err'); }
+  }
+
+  // ---------- lançamento
+  var nomes = { Saida: 'Saída', Entrada: 'Entrada', Contagem: 'Contagem' };
+  Array.prototype.forEach.call($('acoes').children, function (b) {
+    b.onclick = function () { abrirForm(b.getAttribute('data-tipo')); };
+  });
+
+  function abrirForm(tipo) {
+    if (!estado.token) { pedirOperador(); return; }
+    estado.tipo = tipo;
+    $('lblQtd').textContent = tipo === 'Contagem' ? 'Quantidade contada na prateleira (' + estado.item.un + ')'
+      : 'Quantidade de ' + nomes[tipo].toLowerCase() + ' (' + estado.item.un + ')';
+    $('qtd').value = ''; $('obs').value = ''; $('prev').textContent = '';
+    $('btnConfirmar').className = 'btn ' + ({ Saida: 'b-saida', Entrada: 'b-entrada', Contagem: 'b-conta' }[tipo]);
+    $('btnConfirmar').textContent = 'Confirmar ' + nomes[tipo].toLowerCase();
+    mostrar($('acoes'), false); mostrar($('secForm'), true);
+    setTimeout(function () { $('qtd').focus(); }, 30);
+  }
+  function fecharForm() {
+    estado.tipo = null;
+    mostrar($('secForm'), false); mostrar($('acoes'), true);
+  }
+  $('btnCancelar').onclick = function () { fecharForm(); focarBusca(); };
+
+  function previa() {
+    var n = paraNumero($('qtd').value), p = estado.item, t = estado.tipo, el = $('prev');
+    if (isNaN(n) || !p) { el.textContent = ''; return; }
+    if (t === 'Contagem') {
+      var d = n - p.saldo;
+      el.innerHTML = Math.abs(d) < 1e-9 ? 'Confere com o sistema.'
+        : 'Sistema: ' + fmt(p.saldo) + ' &rarr; ajuste de <b>' + (d > 0 ? '+' : '') + fmt(d) + '</b>';
+    } else {
+      var novo = t === 'Saida' ? p.saldo - n : p.saldo + n;
+      el.innerHTML = 'Saldo ficará: <b>' + fmt(novo) + '</b> ' + esc(p.un) +
+        (t === 'Saida' && novo < 0 ? ' &mdash; <b>maior que o saldo!</b>' : '');
+    }
+  }
+
+  // Leitura do código caindo no campo de quantidade: detecta e vira busca.
+  var digitacao = { inicio: 0, teclas: 0, salto: false, ant: '' };
+  $('qtd').addEventListener('keydown', function (e) {
+    var agora = Date.now();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var v = $('qtd').value, rapido = digitacao.teclas >= 3 && (agora - digitacao.inicio) / digitacao.teclas < 35;
+      if (v && (rapido || digitacao.salto || isNaN(paraNumero(v)))) { buscar(v); }
+      digitacao = { inicio: 0, teclas: 0, salto: false, ant: '' };
+      return;
+    }
+    if (!digitacao.teclas) digitacao.inicio = agora;
+    digitacao.teclas++;
+  });
+  $('qtd').addEventListener('input', function () {
+    var v = $('qtd').value;
+    if (v.length - digitacao.ant.length >= 3) digitacao.salto = true;
+    digitacao.ant = v;
+    previa();
+  });
+
+  $('btnConfirmar').onclick = function () { confirmar(false); };
+
+  async function confirmar(forcar) {
+    var n = paraNumero($('qtd').value), p = estado.item, t = estado.tipo;
+    if (isNaN(n) || n < 0 || (t !== 'Contagem' && n === 0)) { aviso('Digite uma quantidade válida.', 'warn'); $('qtd').focus(); return; }
+    if (n > 1000000) { aviso('Quantidade muito alta. Confira se não bipou um código no campo.', 'warn'); $('qtd').focus(); return; }
+    var bt = $('btnConfirmar'); bt.disabled = true; bt.textContent = 'Lançando...';
+    try {
+      var d = await api('/api/movimento', { id: p.id, tipo: t, quantidade: n, obs: $('obs').value,
+        forcar: !!forcar });
+      if (d.confirmar) {
+        aviso(d.msg, 'warn', [
+          { texto: 'Voltar', ghost: true, acao: function () { limparAviso(); $('qtd').focus(); } },
+          { texto: 'Lançar assim mesmo', acao: function () { limparAviso(); confirmar(true); } }
+        ]);
+        return;
+      }
+      if (!d.ok) throw new Error(d.erro || d.msg || 'Não foi possível lançar');
+      fecharForm();
+      pintarItem(d.produto);
+      aviso(d.msg, 'ok');
+      carregarHistorico();
+      focarBusca();
+    } catch (e) {
+      aviso(e.message, 'err');
+    } finally {
+      bt.disabled = false; bt.textContent = 'Confirmar ' + (nomes[t] || '').toLowerCase();
+    }
+  }
+
+  // ---------- teclado virtual: só abre quando a pessoa toca no campo
+  // (o foco automático serve para o leitor, sem ficar abrindo teclado na tela)
+  var busca = $('busca');
+  busca.setAttribute('inputmode', 'none');
+  function querDigitar() { busca.setAttribute('inputmode', 'text'); }
+  busca.addEventListener('touchstart', querDigitar);
+  busca.addEventListener('mousedown', querDigitar);
+  busca.addEventListener('blur', function () { busca.setAttribute('inputmode', 'none'); });
+
+  // ---------- câmera
+  var cam = { stream: null, timer: null, detector: null, canvas: null, ctx: null, lendo: false, lanterna: false };
+
+  function carregarJsQR() {
+    return new Promise(function (ok, falha) {
+      if (window.jsQR) return ok();
+      var s = document.createElement('script');
+      s.src = '/jsqr.js'; s.onload = ok; s.onerror = function () { falha(new Error('Não consegui carregar o leitor de QR.')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function prepararDetector() {
+    if (cam.detector !== null) return;
+    cam.detector = false;
+    if ('BarcodeDetector' in window) {
+      try {
+        var formatos = await window.BarcodeDetector.getSupportedFormats();
+        if (formatos.indexOf('qr_code') >= 0) {
+          cam.detector = new window.BarcodeDetector({ formats: formatos.filter(function (f) {
+            return ['qr_code', 'code_128', 'ean_13', 'ean_8', 'code_39'].indexOf(f) >= 0; }) });
+        }
+      } catch (e) { cam.detector = false; }
+    }
+    if (!cam.detector) await carregarJsQR();
+  }
+
+  async function abrirCamera() {
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      aviso('Este navegador não liberou a câmera. Use o leitor ou digite o código.', 'warn');
+      return;
+    }
+    try {
+      await prepararDetector();
+      cam.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    } catch (e) {
+      var m = (e && e.name === 'NotAllowedError') ? 'Permissão da câmera negada. Libere nas permissões do site e tente de novo.'
+        : (e.message || 'Não consegui abrir a câmera.');
+      aviso(m, 'err'); return;
+    }
+    var v = $('video');
+    v.srcObject = cam.stream;
+    try { await v.play(); } catch (e) {}
+    $('camHint').textContent = 'Centralize um QR dentro do quadro';
+    $('camera').querySelector('.mira').classList.remove('lido');
+    mostrar($('camera'), true);
+    var faixa = cam.stream.getVideoTracks()[0], caps = faixa && faixa.getCapabilities ? faixa.getCapabilities() : {};
+    mostrar($('btnLanterna'), !!caps.torch);
+    cam.lanterna = false; $('btnLanterna').classList.remove('on');
+    cam.lendo = false; cam.ultimo = null; cam.vezes = 0;
+    cam.timer = setInterval(lerQuadro, 120);
+  }
+
+  function fecharCamera() {
+    clearInterval(cam.timer); cam.timer = null;
+    if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+    cam.stream = null;
+    $('video').srcObject = null;
+    mostrar($('camera'), false);
+  }
+
+  // O vídeo aparece com object-fit: cover (cortado para preencher a tela).
+  // Converte o quadrado desenhado na tela para a região equivalente no vídeo.
+  function miraNoVideo(v) {
+    var vw = v.videoWidth, vh = v.videoHeight;
+    var rv = v.getBoundingClientRect(), rm = $('camera').querySelector('.mira span').getBoundingClientRect();
+    var s = Math.max(rv.width / vw, rv.height / vh);
+    var ox = (rv.width - vw * s) / 2, oy = (rv.height - vh * s) / 2;
+    var x = (rm.left - rv.left - ox) / s, y = (rm.top - rv.top - oy) / s, lado = rm.width / s;
+    x = Math.max(0, x); y = Math.max(0, y);
+    lado = Math.min(lado, vw - x, vh - y);
+    return { x: x, y: y, lado: lado };
+  }
+
+  async function lerQuadro() {
+    var v = $('video');
+    if (cam.lendo || !cam.stream || v.readyState < 2 || !v.videoWidth) return;
+    cam.lendo = true;
+    try {
+      var texto = null;
+      var m = miraNoVideo(v);   // quadrado da tela convertido para pixels do vídeo
+      if (cam.detector) {
+        var r = await cam.detector.detect(v);
+        var melhor = null, menor = Infinity, cx = m.x + m.lado / 2, cy = m.y + m.lado / 2;
+        (r || []).forEach(function (d) {
+          var b = d.boundingBox;
+          if (!b) return;
+          var bx = b.x + b.width / 2, by = b.y + b.height / 2;
+          // só vale QR cujo centro está dentro do quadrado; se houver mais de um, o mais central
+          if (bx < m.x || bx > m.x + m.lado || by < m.y || by > m.y + m.lado) return;
+          var dist = Math.sqrt((bx - cx) * (bx - cx) + (by - cy) * (by - cy));
+          if (dist < menor) { menor = dist; melhor = d; }
+        });
+        if (melhor) texto = melhor.rawValue;
+      } else {
+        // recorte só da área do quadrado, reduzido para ler rápido
+        var alvo = 480;
+        if (!cam.canvas) { cam.canvas = document.createElement('canvas'); cam.ctx = cam.canvas.getContext('2d', { willReadFrequently: true }); }
+        cam.canvas.width = alvo; cam.canvas.height = alvo;
+        cam.ctx.drawImage(v, m.x, m.y, m.lado, m.lado, 0, 0, alvo, alvo);
+        var img = cam.ctx.getImageData(0, 0, alvo, alvo);
+        var q = window.jsQR(img.data, alvo, alvo, { inversionAttempts: 'dontInvert' });
+        if (q && q.data) texto = q.data;
+      }
+      // confirma: o mesmo código precisa aparecer em 2 quadros seguidos
+      if (texto && texto !== cam.ultimo) { cam.ultimo = texto; cam.vezes = 1; texto = null; }
+      else if (texto) { cam.vezes++; }
+      else { cam.ultimo = null; cam.vezes = 0; }
+      if (texto && cam.vezes >= 2 && cam.stream) {
+        $('camera').querySelector('.mira').classList.add('lido');
+        if (navigator.vibrate) navigator.vibrate(80);
+        fecharCamera();
+        buscar(texto.trim());
+      }
+    } catch (e) {} finally { cam.lendo = false; }
+  }
+
+  $('btnCamera').onclick = abrirCamera;
+  $('btnFecharCam').onclick = function () { fecharCamera(); };
+  $('btnLanterna').onclick = async function () {
+    var faixa = cam.stream && cam.stream.getVideoTracks()[0];
+    if (!faixa) return;
+    cam.lanterna = !cam.lanterna;
+    try { await faixa.applyConstraints({ advanced: [{ torch: cam.lanterna }] }); } catch (e) { cam.lanterna = false; }
+    $('btnLanterna').classList.toggle('on', cam.lanterna);
+  };
+  document.addEventListener('visibilitychange', function () { if (document.hidden && cam.stream) fecharCamera(); });
+
+  // ---------- histórico e status
+  async function carregarHistorico() {
+    if (!estado.token) return;
+    try {
+      var d = await api('/api/movimentos');
+      var m = d.movimentos || [];
+      $('hist').innerHTML = m.length ? m.map(function (x) {
+        var q = Number(String(x.quantidade).replace(',', '.')) || 0, erro = x.resultado && x.resultado !== 'ok';
+        var cls = q < 0 ? 'neg' : (q > 0 ? 'pos' : '');
+        return '<li><div class="q ' + cls + '">' + (erro ? '✕' : (q > 0 ? '+' : '') + fmt(q)) + '</div><div class="x">' +
+          '<div><b>' + esc(x.cod_produto) + '</b> ' + esc(x.desc_produto) + '</div>' +
+          '<small>' + esc(nomes[x.tipo] || x.tipo) + ' · ' + esc(x.operador) + ' · ' + esc(x.data_hora) +
+          (erro ? ' · ' + esc(x.resultado) : '') + '</small></div></li>';
+      }).join('') : '<li><small>Nenhum lançamento ainda.</small></li>';
+    } catch (e) {}
+  }
+
+  async function status() {
+    if (!estado.token) return;
+    try {
+      var s = await api('/api/status');
+      $('dot').className = 'dot on';
+      var modo = s.libera_todos ? 'lançamentos liberados' :
+        (s.liberados.length ? 'modo teste: ' + s.liberados.length + ' item(ns) liberado(s)' : 'somente consulta');
+      $('rodape').textContent = s.produtos + ' itens · atualizado ' + (s.atualizado_em || '—') + ' · ' + modo;
+    } catch (e) {
+      $('dot').className = 'dot off';
+      $('rodape').textContent = estado.token ? ('Sem resposta: ' + e.message) : '';
+    }
+  }
+
+  // Toque fora de campos devolve o foco para a busca (o leitor sempre cai lá).
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.closest('input, button, .lista li, .modal, .camera')) focarBusca();
+  });
+
+  estado.token = lerLocal('almox_token');
+  estado.operador = estado.token ? lerLocal('almox_operador') : '';
+  $('btnOperador').textContent = estado.operador || 'Entrar';
+
+  $('btnAtualizarLista').onclick = async function () {
+    var bt = this; bt.disabled = true; bt.textContent = 'Atualizando...';
+    try { var d = await api('/api/atualizar-produtos', {}); aviso('Lista atualizada: ' + d.produtos + ' itens.', 'ok'); status(); }
+    catch (e) { aviso('Não consegui atualizar a lista: ' + e.message, 'err'); }
+    finally { bt.disabled = false; bt.textContent = 'Atualizar lista do vhsys'; }
+  };
+  $('btnCsv').onclick = function () {
+    if (!estado.token) { pedirOperador(); return; }
+    window.location.href = '/api/movimentos.csv?t=' + encodeURIComponent(estado.token);
+  };
+  if (estado.token) { status(); carregarHistorico(); }
+  // atualiza o rodapé a cada 5 min, só com a tela aberta (economiza o plano grátis)
+  setInterval(function () { if (estado.token && !document.hidden) status(); }, 300000);
+  if (!estado.token) pedirOperador(); else focarBusca();
+})();
+</script>
+</body>
+</html>
