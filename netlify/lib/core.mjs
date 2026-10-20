@@ -109,6 +109,8 @@ export async function vhsys(cfg, metodo, caminho, corpo) {
   return d;
 }
 
+const semResultado = (e) => /nenhum\s+\S*\s*encontrad/i.test(String(e && e.message));
+
 // ------------------------------------------------------------------ lista de produtos
 
 const CAMPOS = ["id_produto", "cod_produto", "desc_produto", "codigo_barra_produto", "codigo_barras_internos",
@@ -139,7 +141,9 @@ export async function baixarProdutos(cfg) {
   for (let pagina = 0; ; pagina += lote) {
     const paginas = await Promise.all(Array.from({ length: lote }, (_, i) =>
       vhsys(cfg, "GET", `/produtos?limit=${limite}&offset=${(pagina + i) * limite}&lixeira=Nao`)
-        .then((r) => r.data || [])));
+        .then((r) => (Array.isArray(r.data) ? r.data : []))
+        // Página depois da última: o vhsys responde 403 "Nenhum produto encontrado!" em vez de lista vazia.
+        .catch((e) => { if (semResultado(e)) return []; throw e; })));
     let fim = false;
     for (const p of paginas) {
       produtos.push(...p);
@@ -207,7 +211,9 @@ export function publico(cfg, p) {
 
 export async function produtoAtual(cfg, id) {
   if (!/^\d+$/.test(String(id))) throw new ErroApp("Produto inválido", 400);
-  const r = await vhsys(cfg, "GET", `/produtos/${id}`);
+  let r;
+  try { r = await vhsys(cfg, "GET", `/produtos/${id}`); }
+  catch (e) { if (semResultado(e)) throw new ErroApp("Produto não encontrado no vhsys", 422); throw e; }
   let d = r.data;
   if (Array.isArray(d)) d = d[0];
   if (!d) throw new ErroApp("Produto não encontrado no vhsys", 422);
